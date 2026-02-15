@@ -1,18 +1,19 @@
-# Helm
+# Ignore Helm dependency charts
 charts/*/charts/
 *.tgz
-.helmignore
 
-# Cookiecutter
-*.pyc
-__pycache__/
+# Helm lock files
+*.lock
 
-# Test output
+# Test outputs
 test-output/
-test-output-*/
-dist/
+rendered-*.yaml
 
-# IDEs
+# Tilt
+tilt/tilt.local.json
+.tilt/
+
+# IDE
 .vscode/
 .idea/
 *.swp
@@ -22,8 +23,3 @@ dist/
 # OS
 .DS_Store
 Thumbs.db
-
-# Temporary files
-*.log
-tmp/
-temp/

@@ -1,398 +1,395 @@
-# BC Government Justice GitOps Template
+# abcd54-app-gitops
 
-A cookiecutter template for creating standardized GitOps repositories for BC Government Justice applications deployed on OpenShift/Kubernetes.
+GitOps repository for abcd54-app - Deployed to BC Government Emerald OpenShift Platform
 
-## 🎉 New: Helm Chart Published to GHCR!
+## Overview
 
-The `ag-helm-templates` shared library is now published to GitHub Container Registry. **No need to copy `shared-lib` folders anymore!**
+GitOps repository for abcd54
 
-📦 **Package:** `oci://ghcr.io/olissao1616/helm/ag-helm-templates:1.0.3`
+**License Plate:** `abcd54`
 
-See [HELM_PACKAGE_GUIDE.md](HELM_PACKAGE_GUIDE.md) for details.
+**Namespaces:**
 
-## Quick Start
+- Development: `abcd54-dev`
+- Test: `abcd54-test`
+- Production: `abcd54-prod`
 
-**One command to test everything:**
-
-```bash
-bash scripts/test-complete-deployment.sh
-```
-
-This validates the complete workflow: generation, deployment, and verification.
-
-### Validation & policy scans
-
-For a single-page overview of which tools/policies run in CI, how to run the same checks locally, and how to troubleshoot failures, see:
-
-- `docs/validation-and-policy-scans.md`
-
-## What This Template Provides
-
-- **Standardized Helm Charts** using the ag-helm shared library
-- **Support for Frontend + Backend + Database** architectures
-- **Environment-specific configurations** (dev, test, prod)
-- **Horizontal Pod Autoscaling** (HPA) ready
-- **OpenShift Routes** for external access
-- **Network Policies** for security
-- **Service Accounts** for RBAC
-
-## For Developers
-
-### Prerequisites
-
-- [Cookiecutter](https://cookiecutter.readthedocs.io/) - `pip install cookiecutter`
-- [Helm 3.x](https://helm.sh/docs/intro/install/)
-- [kubectl](https://kubernetes.io/docs/tasks/tools/) configured for your cluster
-- Your **License Plate** (provided by platform team)
-
-### Generate Your GitOps Repository
-
-```bash
-# Clone this template repository
-git clone <template-repo-url>
-cd ministry-gitops-jag-template-main
-
-# Generate a GitOps repo (includes charts + deploy values + Argo CD)
-cookiecutter ./gitops-repo --no-input \
-  app_name=myapp \
-  licence_plate=abc123 \
-  github_org=bcgov-c
-```
-
-### Configure Your Application
-
-Edit the generated values file (`myapp-gitops/deploy/dev_values.yaml`):
-
-```yaml
-frontend:
-  enabled: true
-  image:
-    repository: docker.io/myorg
-    name: my-frontend-app
-    tag: "v1.0.0"
-  route:
-    host: myapp-abc123-dev.apps.emerald.devops.gov.bc.ca
-
-backend:
-  enabled: true
-  image:
-    repository: docker.io/myorg
-    name: my-backend-api
-    tag: "v1.0.0"
-  database:
-    connectionString: "Host=myapp-postgresql;Port=5432;..."
-```
-
-### Deploy
-
-```bash
-# The ag-helm dependency is now fetched from GHCR automatically!
-cd myapp-charts/gitops
-helm dependency update
-
-# Deploy to dev
-helm install myapp . \
-  --values ../../myapp-deploy/dev_values.yaml \
-  --namespace abc123-dev \
-  --create-namespace
-
-# Verify
-kubectl get pods -n abc123-dev
-```
-
-**Note:** No need to manually copy `shared-lib/ag-helm` anymore! The cookiecutter template is configured to pull from `oci://ghcr.io/olissao1616/helm/ag-helm-templates` automatically.
-
-## Key Features
-
-### ag-helm Shared Library
-
-Reusable Helm templates for consistent deployments across all Justice applications:
-
-- **Standardized Deployments** - Container configurations, security contexts, resource limits
-- **Service Discovery** - Kubernetes services with consistent naming
-- **Autoscaling** - HPA configurations for CPU/memory-based scaling
-- **Network Policies** - Default security rules for pod communication
-
-### Adding New Components
-
-To add a new service (e.g., "worker"):
-
-**1. Add values configuration:**
-
-```yaml
-worker:
-  enabled: true
-  image:
-    repository: docker.io/myorg
-    name: my-worker
-    tag: latest
-  service:
-    port: 8081
-```
-
-**2. Create deployment template (`worker-deployment.yaml`):**
-
-```yaml
-{{- if .Values.worker.enabled }}
-{{- $p := dict "Values" .Values.worker -}}
-{{- $_ := set $p "ApplicationGroup" (default .Values.project "app") -}}
-{{- $_ := set $p "Name" (default "worker" .Values.worker.image.name) -}}
-{{- $_ := set $p "Registry" .Values.worker.image.repository -}}
-{{- $_ := set $p "ModuleValues" (dict
-  "image" (dict "tag" .Values.worker.image.tag "pullPolicy" .Values.worker.image.pullPolicy)
-  "replicas" .Values.worker.replicaCount
-  "resources" .Values.worker.resources
-) -}}
-{{ include "ag-template.deployment" $p }}
-{{- end }}
-```
-
-**3. Deploy:**
-
-```bash
-helm upgrade myapp . --values dev_values.yaml
-```
-
-See [Architecture Documentation](docs/architecture.md#adding-a-new-service-component) for detailed instructions.
-
-## Documentation
-
-### Developer Onboarding
-- **[Developer Cookbook (Emerald / Zero-Trust)](docs/developer-cookbook.md)** - End-to-end onboarding and working patterns
-
-### Getting Started
-- **[Getting Started Guide](docs/getting-started.md)** - First-time setup and deployment
-- **[Repository Structure](docs/repository-structure.md)** - Naming conventions and folder structure
-
-### Understanding the Template
-- **[Architecture](docs/architecture.md)** - How the template works and using ag-helm
-- **[Template Structure](docs/template-structure.md)** - Understanding template files
-- **[Configuration Guide](docs/configuration-guide.md)** - Complete values reference
-
-### Deployment
-- **[Deployment Guide](docs/deployment-guide.md)** - Step-by-step deployment instructions
-- **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
-
-### Changelog
-- **[CHANGELOG.md](CHANGELOG.md)** - Recent fixes and improvements
-
-## Recent Fixes
-
-### Template Syntax Issues (2026-02-10)
-
-Fixed critical cookiecutter template syntax errors:
-
-✅ **Fixed Files:**
-- `frontend-route.yaml` - Escaped Helm syntax, added closing tag
-- `backend-hpa.yaml` - Escaped Helm syntax, added closing tag
-- `frontend-hpa.yaml` - Escaped Helm syntax, added closing tag
-
-✅ **Fixed Image Paths:**
-- Deployment templates now use `image.name` from values
-- Supports custom Docker image names
-
-✅ **Fixed Security Context:**
-- Changed `runAsNonRoot: false` to allow standard Docker images
-- Changed `readOnlyRootFilesystem: false` for writable containers
-
-✅ **Fixed PostgreSQL:**
-- Uses `postgres:16` (official image) instead of unavailable Bitnami image
-
-See [CHANGELOG.md](CHANGELOG.md) for complete details.
-
-## Testing
-
-### End-to-End Test
-
-Validates the complete workflow:
-
-```bash
-cd ministry-gitops-jag-template-main
-bash scripts/test-complete-deployment.sh
-```
-
-**What it tests:**
-- ✅ Cookiecutter generation
-- ✅ Helm chart deployment
-- ✅ Frontend deployment (1/1 ready)
-- ✅ Backend deployment (1/1 ready)
-- ✅ PostgreSQL deployment (1/1 ready)
-- ✅ HPAs configured
-- ✅ Services exposed
-
-### Component Tests
-
-```bash
-bash scripts/test-unified-gitops-chart.sh
-```
-
-Tests individual scenarios:
-- Frontend-only deployment
-- Backend-only deployment
-- Full-stack deployment
-
-## Architecture
-
-```
-┌─────────────────────────────────────────┐
-│     Environment Values Files             │
-│     (dev_values.yaml, prod_values.yaml) │
-└──────────────┬──────────────────────────┘
-               │
-               ▼
-┌──────────────────────────────────────────┐
-│     Application Templates                │
-│     (frontend-deployment.yaml, etc.)     │
-│     - Uses cookiecutter for generation   │
-│     - Uses Helm for deployment           │
-└──────────────┬──────────────────────────┘
-               │
-               ▼
-┌──────────────────────────────────────────┐
-│     ag-helm Shared Library               │
-│     (Reusable Helm template functions)   │
-│     - ag-template.deployment             │
-│     - ag-template.service                │
-│     - ag-template.hpa                    │
-└──────────────────────────────────────────┘
-```
+---
 
 ## Repository Structure
 
 ```
-ministry-gitops-jag-template-main/
-├── charts/                          # Helm chart templates
-│   └── {{cookiecutter.charts_dir}}/
-│       └── gitops/
-│           ├── Chart.yaml
-│           ├── values.yaml
-│           └── templates/          # Kubernetes manifests
+abcd54-app-gitops/
+├── .github/
+│   ├── policies.yaml              # Datree policy configuration for K8s validation
+│   └── workflows/                 # GitHub Actions CI/CD pipelines
+│       ├── ci.yml                 # Continuous integration (lint, template, test)
+│       ├── policy-enforcement.yaml # Datree policy checks on branch pushes
+│       ├── validate-network-policies.yaml           # Network policy validation
+│       ├── validate-network-policies-comprehensive.yaml  # Extended validation
+│       ├── repository-setup.yml   # Initial repo setup (runs once)
+│       ├── setup-repository.yml   # Alternative setup workflow
+│       └── template-report.yml    # Template usage reporting
 │
-├── deploy/                          # Environment configurations
-│   └── {{cookiecutter.deploy_dir}}/
-│       ├── dev_values.yaml
-│       ├── test_values.yaml
-│       └── prod_values.yaml
+├── argocd/                        # ArgoCD Application manifests
+│   ├── abcd54-gitops-dev.yaml   # Dev environment ArgoCD app
+│   ├── abcd54-gitops-test.yaml  # Test environment ArgoCD app
+│   └── abcd54-gitops-prod.yaml  # Prod environment ArgoCD app
 │
-├── shared-lib/                      # Shared libraries
-│   └── ag-helm/                    # ag-helm Helm library
+├── charts/                        # Helm charts
+│   ├── .polaris.yaml              # Polaris security validation config
+│   ├── .kube-linter.yaml          # Kube-linter validation config
+│   ├── policy/                    # OPA/Conftest policies
+│   │   ├── dataclass.rego         # DataClass label validation
+│   │   ├── networkpolicy.rego     # Network policy validation
+│   │   └── security.rego          # Security policy validation
+│   └── gitops/                    # Main Helm chart
+│       ├── Chart.yaml             # Chart metadata and dependencies
+│       ├── values.yaml            # Default values
+│       ├── charts/                # Dependency charts (downloaded from OCI registry)
+│       └── templates/             # Kubernetes manifest templates
+│           ├── _helpers.tpl       # Template helpers
+│           ├── backend-*.yaml     # Backend (API) resources
+│           ├── frontend-*.yaml    # Frontend (Web) resources
+│           ├── postgresql-*.yaml  # Database resources
+│           └── priorityclass.yaml # Pod priority configuration
 │
-├── scripts/                         # Utility scripts
-│   ├── test-complete-deployment.sh
-│   └── test-unified-gitops-chart.sh
-│
-├── docs/                            # Documentation
-│   ├── getting-started.md
-│   ├── architecture.md
-│   ├── configuration-guide.md
-│   └── ...
-│
-├── README.md                        # This file
-└── CHANGELOG.md                     # Version history
+└── deploy/                        # Environment-specific values
+    ├── dev_values.yaml            # Development environment configuration
+    ├── test_values.yaml           # Test environment configuration
+    └── prod_values.yaml           # Production environment configuration
 ```
 
-## Common Use Cases
+### Key Files Explained
 
-### Frontend-Only Deployment
-
-```yaml
-frontend:
-  enabled: true
-backend:
-  enabled: false
-postgresql:
-  enabled: false
-```
-
-### Backend with Database
-
-```yaml
-frontend:
-  enabled: false
-backend:
-  enabled: true
-  database:
-    connectionString: "Host=myapp-postgresql;..."
-postgresql:
-  enabled: true
-```
-
-### Full Stack
-
-```yaml
-frontend:
-  enabled: true
-  apiUrl: "myapp-backend:8080"
-backend:
-  enabled: true
-  database:
-    connectionString: "Host=myapp-postgresql;..."
-postgresql:
-  enabled: true
-```
-
-## Naming Conventions
-
-### Namespaces
-
-```
-{licence_plate}-{environment}
-```
-
-Examples: `abc123-dev`, `abc123-test`, `abc123-prod`
-
-### Routes
-
-```
-{app}-{licence_plate}-{environment}.apps.{cluster}.devops.gov.bc.ca
-```
-
-Examples:
-- `myapp-abc123-dev.apps.emerald.devops.gov.bc.ca`
-- `myapp-abc123-prod.apps.gold.devops.gov.bc.ca`
-
-See [Repository Structure](docs/repository-structure.md) for complete naming standards.
-
-## Contributing
-
-### Reporting Issues
-
-Found a bug or have a suggestion? Please open an issue with:
-- Description of the problem
-- Steps to reproduce
-- Expected vs actual behavior
-- Environment details (Helm version, cluster type, etc.)
-
-### Development
-
-To modify the template:
-
-1. Make changes to templates in `charts/` or `deploy/`
-2. Test with `scripts/test-complete-deployment.sh`
-3. Update documentation
-4. Update CHANGELOG.md
-
-## License
-
-[Specify License]
-
-## Support
-
-For help:
-1. Check [Troubleshooting Guide](docs/troubleshooting.md)
-2. Review [Documentation](docs/)
-3. Contact platform team
-4. Open an issue
-
-## Resources
-
-- [Helm Documentation](https://helm.sh/docs/)
-- [Kubernetes Documentation](https://kubernetes.io/docs/)
-- [Cookiecutter Documentation](https://cookiecutter.readthedocs.io/)
-- [OpenShift Documentation](https://docs.openshift.com/)
+| File/Folder                   | Purpose                                                              | When to Edit                                        |
+| ----------------------------- | -------------------------------------------------------------------- | --------------------------------------------------- |
+| `deploy/*_values.yaml`      | Environment-specific configuration (image tags, replicas, resources) | When deploying new versions or adjusting resources  |
+| `charts/gitops/Chart.yaml`  | Helm chart metadata and dependency versions                          | When updating dependency chart versions             |
+| `charts/gitops/values.yaml` | Default values for all environments                                  | When adding new configuration options               |
+| `charts/gitops/templates/`  | Kubernetes resource templates                                        | When adding new services or modifying K8s resources |
+| `argocd/*.yaml`             | ArgoCD application definitions                                       | When changing sync policies or repository URLs      |
+| `.github/policies.yaml`     | Datree security policies                                             | When adjusting security policy rules                |
 
 ---
 
-**Template Version:** 1.0.0 (2026-02-10)
+## Prerequisites
 
-**Maintained by:** BC Government Justice Digital Services
+### Required Tools
+
+- `kubectl` - Kubernetes CLI
+- `helm` (v3.14+) - Helm package manager
+- `oc` - OpenShift CLI
+- Git
+
+### Required Access
+
+- BC Government GitHub organization membership
+- Emerald OpenShift cluster access
+- Appropriate namespace permissions (`abcd54-dev`, `abcd54-test`, `abcd54-prod`)
+
+---
+
+
+## Local Development (Tilt)
+
+Tilt provides a fast local loop for applying the Helm-rendered manifests to OpenShift and getting a live view of resources.
+
+This template uses Tilt's built-in `helm()` (i.e., `helm template` rendering) + `k8s_yaml(...)`.
+It does **not** use the `helm_resource` extension (`helm install/upgrade` semantics, hooks, etc.).
+
+### Prerequisites
+
+- Install Tilt: https://tilt.dev/
+- Ensure your kube context is pointing at Emerald (OpenShift) and that you have access to the target namespace.
+
+### Configure (recommended)
+
+Copy the example local override and set the allowed kube context(s) for safety:
+
+```bash
+cp tilt/tilt.local.json.example tilt/tilt.local.json
+```
+
+Edit `tilt/tilt.local.json` and set `allowContexts` to your expected kube context name.
+
+### Run
+
+```bash
+# Defaults to the env in tilt/tiltconfig.json (typically dev)
+tilt up
+
+# Or choose a specific environment
+tilt up -- --env=dev
+tilt up -- --env=test
+tilt up -- --env=prod
+```
+
+Tilt uses:
+
+- `Tiltfile` (thin entrypoint)
+- `tilt/tiltconfig.json` (shared team config: env mapping, resource grouping, port-forwards)
+- `deploy/*_values.yaml` (image tags, replicas, etc.)
+
+### Resource grouping (what you see in the UI)
+
+Tilt doesn't display "groups" as separate UI sections.
+Instead, this template maps `tilt/tiltconfig.json` `groups` into **Tilt resource labels**.
+
+Use the Tilt UI filter (labels) to quickly show just:
+
+- `app` (frontend + backend)
+- `data` (postgresql)
+
+### Port forwards (how to use them)
+
+Port-forwards are configured in `tilt/tiltconfig.json` under each resource `portForwards`.
+They only make sense when running `tilt up` (interactive); `tilt ci` exits when healthy.
+
+With `tilt up -- --env=dev` running, Tilt will expose:
+
+- Frontend: `http://localhost:8000`
+- Backend: `http://localhost:8080/api/healthz`
+- Postgres: `localhost:5432` (e.g., for `psql`)
+
+Tilt can optionally run `helm dependency update ./charts/gitops` (controlled by `helmDependencyUpdate` in `tilt/tiltconfig.json`).
+
+If you customize `frontend.image.name` / `backend.image.name`, you may need to update the workload names in `tilt/tiltconfig.json`.
+
+Note: this GitOps repo Tilt setup applies Kubernetes manifests; it does not build/push images.
+
+
+## Quick Start
+
+### 1. Deploy to Development
+
+```bash
+# Login to OpenShift
+oc login --server=https://api.emerald.devops.gov.bc.ca:6443
+
+# Switch to dev namespace
+oc project abcd54-dev
+
+# Update Helm dependencies
+helm dependency update ./charts/gitops
+
+# Deploy with Helm
+helm upgrade --install abcd54-app ./charts/gitops \
+  --values ./deploy/dev_values.yaml \
+  --namespace abcd54-dev
+```
+
+### 2. Deploy with ArgoCD (Recommended)
+
+```bash
+# Apply ArgoCD application
+kubectl apply -f argocd/abcd54-gitops-dev.yaml
+
+# Check sync status
+argocd app get abcd54-app-dev
+```
+
+### 3. View Deployed Resources
+
+```bash
+# Check pods
+kubectl get pods -n abcd54-dev
+
+# Check services
+kubectl get svc -n abcd54-dev
+
+# Check routes
+kubectl get route -n abcd54-dev
+```
+
+---
+
+## How to Make Changes
+
+### Update Application Version
+
+**File to edit:** `deploy/dev_values.yaml` (or test_values.yaml, prod_values.yaml)
+
+```yaml
+backend:
+  image:
+    tag: "v1.2.3"  # Change this version
+
+frontend:
+  image:
+    tag: "v2.0.1"  # Change this version
+```
+
+**Commit and push** - ArgoCD will automatically sync the changes.
+
+### Adjust Resources (CPU/Memory)
+
+**File to edit:** `deploy/dev_values.yaml`
+
+```yaml
+backend:
+  resources:
+    requests:
+      cpu: "500m"      # Increase if needed
+      memory: "1Gi"    # Increase if needed
+    limits:
+      cpu: "1000m"
+      memory: "2Gi"
+```
+
+### Scale Replicas
+
+**File to edit:** `deploy/dev_values.yaml`
+
+```yaml
+backend:
+  replicaCount: 3  # Increase for high availability
+```
+
+### Add Environment Variables
+
+**File to edit:** `deploy/dev_values.yaml`
+
+```yaml
+backend:
+  env:
+    - name: NEW_ENV_VAR
+      value: "some_value"
+```
+
+---
+
+## CI/CD Pipelines
+
+### Workflows Overview
+
+| Workflow                            | Trigger                   | Purpose                                                        |
+| ----------------------------------- | ------------------------- | -------------------------------------------------------------- |
+| **CI**                        | Push/PR to main           | Lints and templates charts for all environments                |
+| **Policy Enforcement**        | Push to main/test/develop | Runs Datree security policy checks                             |
+| **Network Policy Validation** | Push/PR                   | Validates network policies with Conftest, Polaris, kube-linter |
+| **Comprehensive Validation**  | Push/PR                   | Extended validation with Trivy, Checkov, kube-score            |
+
+### Policy Checks
+
+Your repo is validated against BC Government Emerald security policies:
+
+- **DataClass Labels** - Must be `Low`, `Medium`, or `High`
+- **Network Policies** - All pods must have network policies defined
+- **Security Context** - Containers must not run as root
+- **Resource Limits** - All containers must have CPU/memory limits
+- **Image Tags** - No `latest` tags allowed
+
+**Fix policy failures** before merging to main.
+
+---
+
+## Emerald Platform Specifics
+
+### Network Policies
+
+All services **must** have network policies. Templates included:
+
+- `backend-networkpolicy.yaml` - API service network policy
+- `frontend-networkpolicy.yaml` - Web app network policy
+- `postgresql-networkpolicy.yaml` - Database network policy
+
+### DataClass Labels
+
+All workloads **must** have `dataClass` labels:
+
+```yaml
+metadata:
+  labels:
+    dataClass: "Medium"  # Options: Low, Medium, High
+```
+
+### Routes (External Access)
+
+Routes use edge termination by default:
+
+```yaml
+spec:
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+```
+
+---
+
+## Testing Locally
+
+### Render Templates
+
+```bash
+helm template abcd54-app ./charts/gitops \
+  --values ./deploy/dev_values.yaml \
+  --debug > rendered-dev.yaml
+```
+
+### Validate with Helm
+
+```bash
+helm lint ./charts/gitops --values ./deploy/dev_values.yaml
+```
+
+### Validate Policies Locally
+
+```bash
+# Install Datree
+helm plugin install https://github.com/datreeio/helm-datree
+
+# Run policy check
+helm datree test --policy-config .github/policies.yaml \
+  ./charts/gitops -- --values ./deploy/dev_values.yaml
+```
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+**Problem:** Pods in `ImagePullBackOff`
+**Solution:** Check image registry access and image tag in `deploy/*_values.yaml`
+
+**Problem:** Service not accessible
+**Solution:** Check route configuration and network policies
+
+**Problem:** Helm dependency update fails
+**Solution:** Ensure you have access to `ghcr.io/olissao1616/helm` registry
+
+**Problem:** ArgoCD not syncing
+**Solution:** Check ArgoCD application status: `argocd app get abcd54-app-dev`
+
+### Get Logs
+
+```bash
+# Pod logs
+kubectl logs -f <pod-name> -n abcd54-dev
+
+# Previous pod logs (after crash)
+kubectl logs <pod-name> -n abcd54-dev --previous
+```
+
+---
+
+## Additional Resources
+
+For detailed documentation about the template structure, advanced customization, and architecture decisions:
+
+📚 **Template Documentation:** https://github.com/bcgov-c/ministry-gitops-jag-template/tree/main/docs
+
+**Key documents:**
+
+- [Repository Structure](https://github.com/bcgov-c/ministry-gitops-jag-template/blob/main/docs/repository-structure.md)
+- [Network Policies Guide](https://github.com/bcgov-c/ministry-gitops-jag-template/blob/main/docs/network-policies.md)
+- [Configuration Guide](https://github.com/bcgov-c/ministry-gitops-jag-template/blob/main/docs/configuration-guide.md)
+- [Troubleshooting](https://github.com/bcgov-c/ministry-gitops-jag-template/blob/main/docs/troubleshooting.md)
+
+---
+
+## Support
+
+**Emerald Platform Support:** [Emerald Support Channel]
+**Template Issues:** https://github.com/bcgov-c/ministry-gitops-jag-template/issues

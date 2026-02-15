@@ -1,0 +1,64 @@
+{
+  "defaultEnv": "dev",
+  "releaseName": "abcd54-app",
+  "helmDependencyUpdate": true,
+
+  "allowContexts": [],
+
+  "envs": {
+    "dev": {
+      "namespace": "abcd54-dev",
+      "valuesFile": "./deploy/dev_values.yaml",
+      "openshift": true
+    },
+    "test": {
+      "namespace": "abcd54-test",
+      "valuesFile": "./deploy/test_values.yaml",
+      "openshift": true
+    },
+    "prod": {
+      "namespace": "abcd54-prod",
+      "valuesFile": "./deploy/prod_values.yaml",
+      "openshift": true
+    }
+  },
+
+  "resources": {
+    "backend": {
+      "objects": [
+        "abcd54-web-api:Deployment",
+        "abcd54-web-api:Service"
+      ],
+      "portForwards": [
+        "8080:8080"
+      ]
+    },
+    "frontend": {
+      "objects": [
+        "abcd54-react-baseapp:Deployment",
+        "abcd54-react-baseapp:Service"
+      ],
+      "openshiftObjects": [
+        "abcd54-react-baseapp:Route"
+      ],
+      "portForwards": [
+        "8000:8000"
+      ]
+    },
+    "postgresql": {
+      "objects": [
+        "abcd54-app-postgresql:StatefulSet",
+        "abcd54-app-postgresql:Service",
+        "abcd54-app-postgresql-hl:Service"
+      ],
+      "portForwards": [
+        "5432:5432"
+      ]
+    }
+  },
+
+  "groups": {
+    "app": ["frontend", "backend"],
+    "data": ["postgresql"]
+  }
+}

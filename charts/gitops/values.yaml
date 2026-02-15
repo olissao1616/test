@@ -1,0 +1,222 @@
+# Chart defaults for the generated GitOps repo
+
+# Global labels/annotations (authoritative source)
+global:
+  project: &project "abcd54"
+  owner: &owner "abcd54"
+  environment: &environment development
+  openshift: true
+  commonAnnotations: &commonAnnotations
+    email: "abcd54@gov.bc.ca"
+
+# Backwards-compatible top-level aliases for existing templates.
+# (Lets us keep consuming templates unchanged while we migrate toward global.*)
+project: *project
+owner: *owner
+environment: *environment
+commonAnnotations: *commonAnnotations
+
+# Optional: create a PriorityClass for the workloads to use
+priorityClass:
+  create: true
+  name: "abcd54-app-normal"
+  value: 1000
+  globalDefault: false
+  description: "Default application priority"
+
+postgresql:
+  enabled: false
+  auth:
+    username: appuser
+    database: appdb
+    existingSecret: ""
+    secretKeys:
+      adminPasswordKey: postgres-password
+      userPasswordKey: password
+    usePasswordFiles: true
+  image:
+    pullPolicy: Always
+    # Optional: set a real sha256 digest to pin the image.
+    # Leave blank to use the chart's default image tag.
+    digest: ""
+  primary:
+    networkPolicy:
+      enabled: false
+    priorityClassName: "abcd54-app-normal"
+    podSecurityContext:
+      enabled: true
+      fsGroup: 10001
+    containerSecurityContext:
+      enabled: true
+      runAsNonRoot: true
+      runAsUser: 10001
+      runAsGroup: 10001
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+          - ALL
+    persistence:
+      enabled: true
+      size: 256Mi
+    resources:
+      limits:
+        cpu: 50m
+        memory: 256Mi
+        ephemeral-storage: 256Mi
+      requests:
+        cpu: 20m
+        memory: 100Mi
+        ephemeral-storage: 128Mi
+  readReplicas:
+    networkPolicy:
+      enabled: false
+    priorityClassName: "abcd54-app-normal"
+  commonAnnotations:
+    {}
+
+
+# Keycloak/SSO configuration (shared by frontend and backend)
+keycloak:
+  enabled: false
+  authUrl: ""
+  realm: ""
+  realmUrl: ""
+  clientId: ""
+  adminClientId: ""
+
+# Database configuration (used by backend)
+database:
+  enabled: false
+  connectionString: ""
+
+# Frontend application (React/Next.js)
+frontend:
+  enabled: true
+  image:
+    repository: sookeke
+    name: react-baseapp
+    tag: "nextjs"
+    # Optional: set a real sha256 digest to pin the image.
+    # Leave blank to use `repository/name:tag`.
+    digest: ""
+    pullPolicy: Always
+
+  replicaCount: 2
+  dataClass: "medium"  # low, medium, or high
+
+  service:
+    type: ClusterIP
+    port: 8000
+
+  route:
+    enabled: true
+    host: frontend-abcd54-dev.apps.gold.devops.gov.bc.ca
+    annotations:
+      aviinfrasetting.ako.vmware.com/name: dataclass-medium
+
+  serviceAccount:
+    create: true
+    automount: true
+    annotations: {}
+
+  # Optional: set a PriorityClass for this workload
+  priorityClassName: "abcd54-app-normal"
+
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+  resources:
+    limits:
+      cpu: 50m
+      memory: 128Mi
+      ephemeral-storage: 256Mi
+    requests:
+      cpu: 20m
+      memory: 50Mi
+      ephemeral-storage: 128Mi
+
+  podLabels: {}
+  podAnnotations: {}
+  commonAnnotations: {}
+
+  volumes: []
+  volumeMounts: []
+  extraEnv: []
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# Backend application (.NET API)
+backend:
+  enabled: true
+  image:
+    repository: sookeke
+    name: web-api
+    tag: "v2"
+    # Optional: set a real sha256 digest to pin the image.
+    # Leave blank to use `repository/name:tag`.
+    digest: ""
+    pullPolicy: Always
+
+  replicaCount: 2
+  dataClass: "medium"  # low, medium, or high
+
+  service:
+    type: ClusterIP
+    port: 8080
+
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+
+  serviceAccount:
+    create: true
+    automount: true
+    annotations: {}
+
+  # Optional: set a PriorityClass for this workload
+  priorityClassName: "abcd54-app-normal"
+
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+  resources:
+    limits:
+      cpu: 50m
+      memory: 128Mi
+      ephemeral-storage: 256Mi
+    requests:
+      cpu: 20m
+      memory: 50Mi
+      ephemeral-storage: 128Mi
+
+  podLabels: {}
+  podAnnotations: {}
+  commonAnnotations: {}
+
+  volumes: []
+  volumeMounts: []
+  extraEnv: []
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+

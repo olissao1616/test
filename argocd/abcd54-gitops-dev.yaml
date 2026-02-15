@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: abcd54-app-dev
+spec:
+  destination:
+    name: ''
+    namespace: abcd54-dev
+    server: 'https://kubernetes.default.svc'
+  source:
+    path: charts/gitops
+    repoURL: 'git@github.com:bcgov-c/tenant-gitops-abcd54.git'
+    targetRevision: develop
+    helm:
+      valueFiles:
+        - $values/deploy/dev_values.yaml
+  project: abcd54
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
